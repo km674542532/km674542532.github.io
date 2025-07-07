@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放列表</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #video-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        #video-list li {
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        #video-list li:hover {
+            color: blue;
+        }
+        #video-player {
+            width: 640px;
+            height: 360px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>视频播放列表</h1>
+    <ul id="video-list"></ul>
+    <video id="video-player" controls></video>
+
+    <script>
+        // 假设视频文件列表
+        const videoFiles = [
+            'video1.mp4',
+            'video2.mp4',
+            'video3.mp4'
+        ];
+
+        const videoList = document.getElementById('video-list');
+        const videoPlayer = document.getElementById('video-player');
+
+        // 动态生成视频列表
+        videoFiles.forEach(file => {
+            const li = document.createElement('li');
+            li.textContent = file;
+            li.addEventListener('click', () => {
+                videoPlayer.src = `./video/${file}`;
+                videoPlayer.play();
+            });
+            videoList.appendChild(li);
+        });
+    </script>
+</body>
+</html>
