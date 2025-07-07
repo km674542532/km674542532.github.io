@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>视频浏览页</title>
+    <!-- 引入原有的 CSS 文件，保持样式统一 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/zui/1.8.1/css/zui.min.css" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        /* 可以在这里添加额外的样式 */
+        body {
+            background-repeat: repeat;
+            background-attachment: fixed;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .video-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 50px 10px;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 可以添加头部导航，与原页面保持一致 -->
+    <header>
+        <!-- 这里可以复制原 index.html 中的头部代码 -->
+    </header>
+
+    <div class="video-container">
+        <!-- 视频列表 -->
+        <video controls>
+            <source src="path/to/your/video.mp4" type="video/mp4">
+            你的浏览器不支持播放此视频。
+        </video>
+        <!-- 可以添加更多视频 -->
+        <video controls>
+            <source src="path/to/another/video.mp4" type="video/mp4">
+            你的浏览器不支持播放此视频。
+        </video>
+    </div>
+
+    <!-- 可以添加底部信息，与原页面保持一致 -->
+    <footer class="footer">
+        <!-- 这里可以复制原 index.html 中的底部代码 -->
+    </footer>
+</body>
+
+</html>
