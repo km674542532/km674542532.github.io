@@ -1,57 +1,489 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>视频播放列表</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #video-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        #video-list li {
-            margin: 10px 0;
-            cursor: pointer;
-        }
-        #video-list li:hover {
-            color: blue;
-        }
-        #video-player {
-            width: 640px;
-            height: 360px;
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频播放器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            dark: '#1E293B',
+            light: '#F8FAFC'
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .video-shadow {
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 8px 10px -6px rgba(59, 130, 246, 0.1);
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+    }
+  </style>
 </head>
-<body>
-    <h1>视频播放列表</h1>
-    <ul id="video-list"></ul>
-    <video id="video-player" controls></video>
+<body class="bg-gray-900 text-gray-100 font-inter min-h-screen flex flex-col">
+  <!-- 顶部导航栏 -->
+  <header class="bg-dark/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-50 transition-all duration-300">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <i class="fa fa-play-circle text-primary text-2xl"></i>
+        <h1 class="text-xl md:text-2xl font-bold text-shadow">视频播放器</h1>
+      </div>
+      <div class="hidden md:flex items-center space-x-4">
+        <button id="refreshBtn" class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg transition-all duration-300 flex items-center">
+          <i class="fa fa-refresh mr-2"></i>刷新视频列表
+        </button>
+      </div>
+      <button id="mobileMenuBtn" class="md:hidden text-xl">
+        <i class="fa fa-bars"></i>
+      </button>
+    </div>
+    <!-- 移动端菜单 -->
+    <div id="mobileMenu" class="md:hidden hidden bg-dark/95 backdrop-blur-md border-b border-gray-800 px-4 py-2">
+      <button id="mobileRefreshBtn" class="w-full bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg transition-all duration-300 flex items-center justify-center mb-2">
+        <i class="fa fa-refresh mr-2"></i>刷新视频列表
+      </button>
+    </div>
+  </header>
 
-    <script>
-        // 假设视频文件列表
-        const videoFiles = [
-            'video1.mp4',
-            'video2.mp4',
-            'video3.mp4'
-        ];
+  <!-- 主内容区 -->
+  <main class="flex-grow container mx-auto px-4 py-6 md:py-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- 视频播放区 -->
+      <div class="lg:col-span-8 space-y-6">
+        <div class="bg-dark/50 rounded-xl overflow-hidden video-shadow transition-all duration-500 transform hover:shadow-lg">
+          <div class="aspect-video bg-gray-900 relative">
+            <video id="videoPlayer" class="w-full h-full object-contain" controls>
+              <p>您的浏览器不支持HTML5视频播放。</p>
+            </video>
+            <!-- 加载状态 -->
+            <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-gray-900/80 hidden">
+              <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          </div>
+          <div class="p-4 md:p-6">
+            <h2 id="videoTitle" class="text-xl md:text-2xl font-bold mb-2 text-shadow">请选择一个视频开始播放</h2>
+            <div class="flex flex-wrap items-center text-gray-400 text-sm space-x-4 mb-4">
+              <span id="videoSize">-</span>
+              <span id="videoDuration">-</span>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">视频文件</span>
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <button id="playPauseBtn" class="bg-primary hover:bg-primary/90 text-white px-5 py-2 rounded-lg transition-all duration-300 flex items-center">
+                <i class="fa fa-play mr-2"></i><span>播放</span>
+              </button>
+              <button id="muteBtn" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center">
+                <i class="fa fa-volume-up mr-2"></i><span>静音</span>
+              </button>
+              <button id="fullscreenBtn" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center">
+                <i class="fa fa-expand mr-2"></i><span>全屏</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
-        const videoList = document.getElementById('video-list');
-        const videoPlayer = document.getElementById('video-player');
+        <!-- 视频信息卡片 -->
+        <div class="bg-dark/50 rounded-xl p-5 border border-gray-800 transition-all duration-300 hover:border-primary/30">
+          <h3 class="text-lg font-semibold mb-3 flex items-center">
+            <i class="fa fa-info-circle text-primary mr-2"></i>视频信息
+          </h3>
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="text-gray-400">文件路径:</div>
+              <div id="videoPath" class="font-mono text-sm">./video/</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="text-gray-400">分辨率:</div>
+              <div id="videoResolution">-</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="text-gray-400">比特率:</div>
+              <div id="videoBitrate">-</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="text-gray-400">帧率:</div>
+              <div id="videoFps">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        // 动态生成视频列表
-        videoFiles.forEach(file => {
-            const li = document.createElement('li');
-            li.textContent = file;
-            li.addEventListener('click', () => {
-                videoPlayer.src = `./video/${file}`;
-                videoPlayer.play();
-            });
-            videoList.appendChild(li);
+      <!-- 视频列表 -->
+      <div class="lg:col-span-4 space-y-6">
+        <div class="bg-dark/50 rounded-xl p-5 border border-gray-800">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold flex items-center">
+              <i class="fa fa-film text-primary mr-2"></i>视频列表
+            </h3>
+            <div class="relative">
+              <input id="searchInput" type="text" placeholder="搜索视频..." class="bg-gray-800 text-sm rounded-lg pl-9 pr-3 py-2 w-full focus:outline-none focus:ring-1 focus:ring-primary">
+              <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+          </div>
+          
+          <div class="max-h-[600px] overflow-y-auto scrollbar-hide pr-2">
+            <div id="videoList" class="space-y-3">
+              <!-- 视频列表将通过JavaScript动态生成 -->
+              <div class="flex items-center justify-center h-32 text-gray-500">
+                <div class="text-center">
+                  <i class="fa fa-folder-open-o text-3xl mb-2"></i>
+                  <p>正在加载视频...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-dark/80 backdrop-blur-md border-t border-gray-800 py-4 mt-10">
+    <div class="container mx-auto px-4 text-center text-gray-500 text-sm">
+      <p>© 2025 视频播放器 | 使用 HTML, Tailwind CSS 和 JavaScript 构建</p>
+    </div>
+  </footer>
+
+  <script>
+    // DOM元素
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoTitle = document.getElementById('videoTitle');
+    const videoSize = document.getElementById('videoSize');
+    const videoDuration = document.getElementById('videoDuration');
+    const videoPath = document.getElementById('videoPath');
+    const videoResolution = document.getElementById('videoResolution');
+    const videoBitrate = document.getElementById('videoBitrate');
+    const videoFps = document.getElementById('videoFps');
+    const videoList = document.getElementById('videoList');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const mobileRefreshBtn = document.getElementById('mobileRefreshBtn');
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const searchInput = document.getElementById('searchInput');
+
+    // 移动菜单切换
+    mobileMenuBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    // 页面加载时获取视频列表
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchVideoList();
+      
+      // 视频元数据加载后更新信息
+      videoPlayer.addEventListener('loadedmetadata', updateVideoInfo);
+      
+      // 视频状态变化时更新播放按钮
+      videoPlayer.addEventListener('play', updatePlayButton);
+      videoPlayer.addEventListener('pause', updatePlayButton);
+      
+      // 视频加载时显示加载指示器
+      videoPlayer.addEventListener('waiting', () => {
+        loadingIndicator.classList.remove('hidden');
+      });
+      
+      // 视频可以播放时隐藏加载指示器
+      videoPlayer.addEventListener('canplay', () => {
+        loadingIndicator.classList.add('hidden');
+      });
+      
+      // 视频播放结束时重置播放按钮
+      videoPlayer.addEventListener('ended', updatePlayButton);
+    });
+
+    // 获取视频列表
+    async function fetchVideoList() {
+      try {
+        // 显示加载状态
+        videoList.innerHTML = `
+          <div class="flex items-center justify-center h-32 text-gray-500">
+            <div class="text-center">
+              <i class="fa fa-spinner fa-spin text-3xl mb-2"></i>
+              <p>正在加载视频...</p>
+            </div>
+          </div>
+        `;
+        
+        // 使用fetch API获取视频列表
+        const response = await fetch('./video');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP错误! 状态: ${response.status}`);
+        }
+        
+        // 解析响应文本
+        const text = await response.text();
+        
+        // 提取视频文件链接
+        const videos = parseVideoLinks(text);
+        
+        if (videos.length === 0) {
+          videoList.innerHTML = `
+            <div class="flex items-center justify-center h-32 text-gray-500">
+              <div class="text-center">
+                <i class="fa fa-folder-open-o text-3xl mb-2"></i>
+                <p>未找到视频文件</p>
+              </div>
+            </div>
+          `;
+          return;
+        }
+        
+        // 渲染视频列表
+        renderVideoList(videos);
+        
+        // 添加搜索功能
+        setupSearch(videos);
+      } catch (error) {
+        console.error('获取视频列表失败:', error);
+        videoList.innerHTML = `
+          <div class="flex items-center justify-center h-32 text-gray-500">
+            <div class="text-center">
+              <i class="fa fa-exclamation-triangle text-3xl mb-2 text-red-500"></i>
+              <p>加载视频失败: ${error.message}</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // 解析视频链接
+    function parseVideoLinks(text) {
+      // 提取所有链接
+      const links = [];
+      const regex = /href="([^"]+)"/g;
+      let match;
+      
+      while ((match = regex.exec(text)) !== null) {
+        links.push(match[1]);
+      }
+      
+      // 过滤视频文件
+      const videoExtensions = ['mp4', 'webm', 'mkv', 'avi', 'mov', 'flv', 'wmv'];
+      return links
+        .filter(link => {
+          const ext = link.split('.').pop().toLowerCase();
+          return videoExtensions.includes(ext);
+        })
+        .map(link => ({
+          name: decodeURIComponent(link),
+          url: `./video/${link}`
+        }));
+    }
+
+    // 渲染视频列表
+    function renderVideoList(videos) {
+      videoList.innerHTML = '';
+      
+      videos.forEach(video => {
+        const item = document.createElement('div');
+        item.className = 'bg-gray-800/50 hover:bg-gray-800 rounded-lg p-3 transition-all duration-300 cursor-pointer group border border-transparent hover:border-primary/30';
+        item.innerHTML = `
+          <div class="flex items-start space-x-3">
+            <div class="w-16 h-12 bg-gray-700 rounded flex items-center justify-center text-gray-500 group-hover:text-primary transition-colors duration-300">
+              <i class="fa fa-file-video-o text-xl"></i>
+            </div>
+            <div class="flex-grow min-w-0">
+              <h4 class="text-sm font-medium text-white truncate group-hover:text-primary transition-colors duration-300">
+                ${video.name}
+              </h4>
+              <div class="text-xs text-gray-400 mt-1">
+                <span class="mr-2">视频文件</span>
+              </div>
+            </div>
+            <div class="text-xs text-gray-400 flex-shrink-0">
+              <i class="fa fa-play-circle-o text-primary"></i>
+            </div>
+          </div>
+        `;
+        
+        item.addEventListener('click', () => {
+          loadVideo(video.url, video.name);
+          
+          // 添加选中效果
+          document.querySelectorAll('#videoList > div').forEach(el => {
+            el.classList.remove('bg-gray-800', 'border-primary/30');
+            el.classList.add('bg-gray-800/50', 'border-transparent');
+          });
+          item.classList.remove('bg-gray-800/50', 'border-transparent');
+          item.classList.add('bg-gray-800', 'border-primary/30');
         });
-    </script>
+        
+        videoList.appendChild(item);
+      });
+    }
+
+    // 加载视频
+    async function loadVideo(url, name) {
+      // 显示加载指示器
+      loadingIndicator.classList.remove('hidden');
+      
+      // 重置视频信息
+      resetVideoInfo();
+      
+      try {
+        // 设置视频源
+        videoPlayer.src = url;
+        
+        // 加载视频
+        await videoPlayer.load();
+        
+        // 更新标题和路径
+        videoTitle.textContent = name;
+        videoPath.textContent = url;
+        
+        // 播放视频
+        await videoPlayer.play();
+      } catch (error) {
+        console.error('加载视频失败:', error);
+        videoTitle.textContent = '加载视频失败';
+        loadingIndicator.classList.add('hidden');
+        alert(`加载视频失败: ${error.message}`);
+      }
+    }
+
+    // 更新视频信息
+    function updateVideoInfo() {
+      // 格式化视频时长
+      const duration = formatDuration(videoPlayer.duration);
+      videoDuration.textContent = `时长: ${duration}`;
+      
+      // 视频分辨率
+      videoResolution.textContent = `${videoPlayer.videoWidth}×${videoPlayer.videoHeight}`;
+      
+      // 视频帧率 (近似值)
+      videoFps.textContent = `${Math.round(videoPlayer.getVideoPlaybackQuality().totalVideoFrames / videoPlayer.currentTime)} FPS`;
+      
+      // 视频比特率 (估算)
+      const bitrate = Math.round((videoPlayer.buffered.end(0) * 8) / videoPlayer.currentTime / 1000);
+      videoBitrate.textContent = `${bitrate} kbps`;
+      
+      // 隐藏加载指示器
+      loadingIndicator.classList.add('hidden');
+    }
+
+    // 重置视频信息
+    function resetVideoInfo() {
+      videoSize.textContent = '-';
+      videoDuration.textContent = '-';
+      videoResolution.textContent = '-';
+      videoBitrate.textContent = '-';
+      videoFps.textContent = '-';
+    }
+
+    // 格式化时长
+    function formatDuration(seconds) {
+      if (isNaN(seconds)) return '00:00';
+      
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      
+      if (hours > 0) {
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      } else {
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+    }
+
+    // 更新播放按钮状态
+    function updatePlayButton() {
+      if (videoPlayer.paused || videoPlayer.ended) {
+        playPauseBtn.innerHTML = '<i class="fa fa-play mr-2"></i><span>播放</span>';
+      } else {
+        playPauseBtn.innerHTML = '<i class="fa fa-pause mr-2"></i><span>暂停</span>';
+      }
+    }
+
+    // 播放/暂停按钮点击事件
+    playPauseBtn.addEventListener('click', () => {
+      if (videoPlayer.paused || videoPlayer.ended) {
+        videoPlayer.play();
+      } else {
+        videoPlayer.pause();
+      }
+    });
+
+    // 静音按钮点击事件
+    muteBtn.addEventListener('click', () => {
+      videoPlayer.muted = !videoPlayer.muted;
+      
+      if (videoPlayer.muted) {
+        muteBtn.innerHTML = '<i class="fa fa-volume-off mr-2"></i><span>取消静音</span>';
+      } else {
+        muteBtn.innerHTML = '<i class="fa fa-volume-up mr-2"></i><span>静音</span>';
+      }
+    });
+
+    // 全屏按钮点击事件
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        videoPlayer.requestFullscreen().catch(err => {
+          console.error(`全屏请求失败: ${err.message}`);
+          alert(`全屏请求失败: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // 刷新按钮点击事件
+    refreshBtn.addEventListener('click', fetchVideoList);
+    mobileRefreshBtn.addEventListener('click', fetchVideoList);
+
+    // 设置搜索功能
+    function setupSearch(videos) {
+      searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredVideos = videos.filter(video => 
+          video.name.toLowerCase().includes(searchTerm)
+        );
+        
+        renderVideoList(filteredVideos);
+      });
+    }
+
+    // 滚动时导航栏效果
+    window.addEventListener('scroll', () => {
+      const header = document.querySelector('header');
+      if (window.scrollY > 10) {
+        header.classList.add('py-2');
+        header.classList.remove('py-3');
+      } else {
+        header.classList.add('py-3');
+        header.classList.remove('py-2');
+      }
+    });
+  </script>
 </body>
 </html>
+    
